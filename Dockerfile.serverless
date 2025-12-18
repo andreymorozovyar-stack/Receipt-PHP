@@ -1,0 +1,73 @@
+FROM php:8.1-cli
+
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-rus \
+    tesseract-ocr-eng \
+    zbar-tools \
+    libzip-dev \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка системных библиотек для GD
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка расширений PHP
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd zip
+
+# Установка Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Рабочая директория
+WORKDIR /var/www/html
+
+# Копирование composer файлов
+COPY composer.json composer.lock* ./
+
+# Установка зависимостей PHP
+RUN composer install --no-dev --optimize-autoloader
+
+# Копирование остальных файлов проекта (router.php должен быть включен)
+COPY . .
+# Проверяем наличие router.php
+RUN test -f /var/www/html/router.php || (echo "ERROR: router.php not found after COPY" && ls -la /var/www/html/ && exit 1)
+
+# Если есть локальные языковые пакеты, используем их
+# Иначе используем системные пакеты Tesseract
+RUN if [ -d "tessdata" ] && [ "$(ls -A tessdata)" ]; then \
+        echo "Используются локальные языковые пакеты"; \
+    else \
+        echo "Используются системные языковые пакеты Tesseract"; \
+    fi
+
+# Настройка прав доступа
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Создаем скрипт для запуска встроенного PHP сервера
+# В Yandex Cloud Serverless Containers переменная PORT устанавливается автоматически
+RUN echo '#!/bin/bash' > /usr/local/bin/start-server.sh && \
+    echo 'set -e' >> /usr/local/bin/start-server.sh && \
+    echo 'PORT=${PORT:-8080}' >> /usr/local/bin/start-server.sh && \
+    echo 'echo "Starting PHP built-in server on port $PORT"' >> /usr/local/bin/start-server.sh && \
+    echo 'cd /var/www/html' >> /usr/local/bin/start-server.sh && \
+    echo 'if [ ! -f router.php ]; then echo "ERROR: router.php not found"; exit 1; fi' >> /usr/local/bin/start-server.sh && \
+    echo 'exec php -S 0.0.0.0:${PORT} router.php' >> /usr/local/bin/start-server.sh && \
+    chmod +x /usr/local/bin/start-server.sh
+
+# Порт (будет переопределен через PORT)
+EXPOSE 8080
+
+# Запуск через скрипт
+CMD ["/usr/local/bin/start-server.sh"]
+
+
+
+
+

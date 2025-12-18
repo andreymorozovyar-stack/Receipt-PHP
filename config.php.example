@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * Пример конфигурации для системы распознавания чеков
+ * Скопируйте этот файл в config.php и укажите пути
+ */
+
+return [
+    // Путь к Tesseract OCR (если не в PATH)
+    // Оставьте null, если Tesseract в PATH
+    // В Docker: null (Tesseract установлен системно)
+    'tesseract_path' => null,
+    // Пример: 'tesseract_path' => 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe',
+    
+    // Путь к zbarimg (для QR-кодов, опционально)
+    // Оставьте null, если zbarimg в PATH
+    // В Docker: null (zbarimg установлен системно)
+    'zbar_path' => null,
+    // Пример: 'zbar_path' => 'C:\\Program Files\\zbar\\bin\\zbarimg.exe',
+    
+    // Путь к tessdata (языковые пакеты)
+    // Оставьте null для использования системных пакетов
+    // В Docker: null (используются системные пакеты)
+    'tessdata_dir' => null,
+    // Пример: 'tessdata_dir' => __DIR__ . '/tessdata',
+    
+    // Языки для распознавания
+    'ocr_languages' => ['rus', 'eng'],
+    
+    // Максимальный размер файла (в байтах)
+    'max_file_size' => 10 * 1024 * 1024, // 10MB
+    
+    // Разрешенные типы файлов
+    'allowed_extensions' => ['png', 'jpg', 'jpeg'],
+    
+    // Временная директория для обработки файлов
+    'temp_dir' => null, // null = системная временная директория
+];
+
+
+
+
+

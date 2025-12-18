@@ -1,0 +1,16 @@
+vendor/
+node_modules/
+.git/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+tests/fixtures/
+composer.phar
+config.php
+docker-compose.yml
+
+
+
+
+

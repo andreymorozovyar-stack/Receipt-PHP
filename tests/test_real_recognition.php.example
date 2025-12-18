@@ -1,0 +1,143 @@
+<?php
+
+/**
+ * Тест реального распознавания изображения
+ * 
+ * ВАЖНО: Это пример теста. Скопируйте в test_real_recognition.php и укажите путь к вашему тестовому изображению.
+ * 
+ * Требования:
+ * - Файл config.php должен быть настроен
+ * - Тестовое изображение чека должно находиться в tests/fixtures/receipt_example.png
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../src/OcrService.php';
+require __DIR__ . '/../src/Parser.php';
+require __DIR__ . '/../src/QrCodeService.php';
+
+use ReceiptRecognition\OcrService;
+use ReceiptRecognition\Parser;
+use ReceiptRecognition\QrCodeService;
+
+echo "========================================\n";
+echo "  ТЕСТ РЕАЛЬНОГО РАСПОЗНАВАНИЯ\n";
+echo "========================================\n\n";
+
+// Загружаем конфигурацию
+if (!file_exists(__DIR__ . '/../config.php')) {
+    echo "✗ Файл config.php не найден. Скопируйте config.php.example в config.php и настройте пути.\n";
+    exit(1);
+}
+
+$config = require __DIR__ . '/../config.php';
+$imagePath = __DIR__ . '/fixtures/receipt_example.png';
+
+if (!file_exists($imagePath)) {
+    echo "✗ Тестовый файл не найден: $imagePath\n";
+    echo "  Поместите тестовое изображение чека в tests/fixtures/receipt_example.png\n";
+    exit(1);
+}
+
+echo "Файл: $imagePath\n";
+echo "Размер: " . number_format(filesize($imagePath)) . " байт\n";
+echo "Tesseract: " . ($config['tesseract_path'] ?? 'системный') . "\n";
+echo "Tessdata: " . ($config['tessdata_dir'] ?? 'системный') . "\n";
+echo "Языки: " . implode(', ', $config['ocr_languages']) . "\n\n";
+
+// Инициализация сервисов
+echo "Инициализация сервисов...\n";
+$ocr = new OcrService($config['tesseract_path'] ?? null, null, $config['tessdata_dir'] ?? null);
+$parser = new Parser();
+$qrService = new QrCodeService($config['zbar_path'] ?? 'zbarimg');
+
+echo "✓ Сервисы инициализированы\n\n";
+
+// Распознавание текста
+echo "Распознавание текста...\n";
+$start = microtime(true);
+try {
+    $text = $ocr->recognize($imagePath, $config['ocr_languages']);
+    $ocrTime = round(microtime(true) - $start, 2);
+    echo "✓ Распознано за {$ocrTime} сек\n";
+    echo "Длина текста: " . strlen($text) . " символов\n\n";
+} catch (Exception $e) {
+    echo "✗ Ошибка распознавания: " . $e->getMessage() . "\n";
+    exit(1);
+}
+
+// Показываем первые 500 символов
+echo "Первые 500 символов распознанного текста:\n";
+echo "----------------------------------------\n";
+echo substr($text, 0, 500) . "\n";
+echo "----------------------------------------\n\n";
+
+// Парсинг
+echo "Парсинг данных...\n";
+$start = microtime(true);
+$result = $parser->parseReceiptText($text);
+$parseTime = round(microtime(true) - $start, 4);
+echo "✓ Распарсено за {$parseTime} сек\n\n";
+
+// Извлечение QR-кода
+echo "Извлечение QR-кода...\n";
+$qrCode = $qrService->extractQrCode($imagePath);
+if ($qrCode) {
+    echo "✓ QR-код найден: " . substr($qrCode, 0, 100) . "...\n";
+    $result['fns_url'] = $qrCode;
+} else {
+    echo "⚠ QR-код не найден\n";
+}
+echo "\n";
+
+// Результат
+echo "========================================\n";
+echo "  РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ\n";
+echo "========================================\n\n";
+
+$result['raw_text'] = $text;
+echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
+
+// Проверка извлеченных данных
+echo "========================================\n";
+echo "  ПРОВЕРКА ДАННЫХ\n";
+echo "========================================\n\n";
+
+$checks = [
+    'Номер чека' => $result['receipt_number'] ?? null,
+    'Дата' => $result['date'] ?? null,
+    'Время' => $result['time'] ?? null,
+    'Продавец' => $result['seller_name'] ?? null,
+    'ИНН продавца' => $result['seller_inn'] ?? null,
+    'ИНН покупателя' => $result['buyer_inn'] ?? null,
+    'Услуги' => isset($result['services']) ? count($result['services']) . ' шт.' : '0',
+    'Итоговая сумма' => $result['total_amount'] ?? null,
+    'Режим налогообложения' => $result['tax_mode'] ?? null,
+    'Формирователь' => $result['check_former'] ?? null,
+    'ИНН формирователя' => $result['check_former_inn'] ?? null,
+    'Ссылка ФНС' => $result['fns_url'] ?? null,
+];
+
+$found = 0;
+$total = count($checks);
+
+foreach ($checks as $label => $value) {
+    $status = $value !== null && $value !== '' ? '✓' : '✗';
+    if ($value !== null && $value !== '') {
+        $found++;
+    }
+    echo sprintf("%s %-25s: %s\n", $status, $label, $value ?? 'не найден');
+}
+
+echo "\n";
+echo "Найдено полей: {$found}/{$total}\n";
+echo "Успешность: " . round(($found / $total) * 100, 1) . "%\n\n";
+
+if ($found >= 8) {
+    echo "✓ Распознавание работает отлично!\n";
+} elseif ($found >= 5) {
+    echo "⚠ Распознавание работает, но некоторые поля не найдены\n";
+} else {
+    echo "✗ Распознавание работает плохо, нужно улучшить парсер\n";
+}
+
+echo "\n========================================\n";

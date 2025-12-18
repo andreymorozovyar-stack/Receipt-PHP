@@ -1,0 +1,17 @@
+RewriteEngine On
+RewriteBase /
+
+# Разрешаем доступ к статическим файлам
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# API endpoint - напрямую в api.php без переписывания пути
+RewriteRule ^api/ api.php [L]
+
+# Главная страница
+RewriteRule ^$ index.html [L]
+
+
+
+
+

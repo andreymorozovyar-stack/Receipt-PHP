@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * Тесты для парсера чеков
+ * 
+ * ВАЖНО: Это пример теста. Скопируйте в test_parser.php и используйте реальные данные для тестирования.
+ */
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use ReceiptRecognition\Parser;
+
+$parser = new Parser();
+
+echo "=== Тестирование парсера чеков ===\n\n";
+
+// Тест 1: Базовый пример текста чека
+// ЗАМЕНИТЕ на реальные данные из вашего чека
+$testText1 = "Чек <НОМЕР_ЧЕКА>
+<ДАТА>
+<ВРЕМЯ>
+<ФИО_ПРОДАВЦА>
+Наименование
+Сумма
+<НАИМЕНОВАНИЕ_УСЛУГИ>
+<СУММА> ₽
+Итого:
+<ИТОГОВАЯ_СУММА> ₽
+Режим HO
+<РЕЖИМ_НАЛОГООБЛОЖЕНИЯ>
+ИНН
+<ИНН_ПРОДАВЦА>
+Чек сформировал
+<ФОРМИРОВАТЕЛЬ>
+ИНН
+<ИНН_ФОРМИРОВАТЕЛЯ>
+Покупатель;
+ИНН; <ИНН_ПОКУПАТЕЛЯ>";
+
+echo "Тест 1: Базовый пример\n";
+echo "Входной текст (первые 200 символов): " . substr($testText1, 0, 200) . "...\n";
+$result1 = $parser->parseReceiptText($testText1);
+echo "Результат:\n";
+echo json_encode($result1, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
+
+// Проверка результатов
+// ОБНОВИТЕ значения проверок под ваши реальные данные
+$checks = [
+    'receipt_number' => $result1['receipt_number'] !== null,
+    'date' => $result1['date'] !== null,
+    'time' => $result1['time'] !== null,
+    'seller_name' => $result1['seller_name'] !== null,
+    'seller_inn' => $result1['seller_inn'] !== null,
+    'buyer_inn' => $result1['buyer_inn'] !== null,
+    'services' => !empty($result1['services']),
+    'total_amount' => $result1['total_amount'] !== null,
+    'tax_mode' => $result1['tax_mode'] !== null,
+    'check_former' => $result1['check_former'] !== null,
+    'check_former_inn' => $result1['check_former_inn'] !== null,
+];
+
+echo "Проверки:\n";
+foreach ($checks as $field => $passed) {
+    echo "  " . ($passed ? "✓" : "✗") . " $field\n";
+}
+
+$passedCount = count(array_filter($checks));
+$totalCount = count($checks);
+echo "\nПройдено: $passedCount/$totalCount\n\n";
+
+// Тест 2: Минимальный текст
+$testText2 = "Чек ABC123
+Итого: 100.50 руб";
+echo "Тест 2: Минимальный текст\n";
+$result2 = $parser->parseReceiptText($testText2);
+echo "Результат:\n";
+echo json_encode($result2, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
+
+// Тест 3: Пустой текст
+echo "Тест 3: Пустой текст\n";
+$result3 = $parser->parseReceiptText("");
+echo "Результат:\n";
+echo json_encode($result3, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
+
+echo "=== Тестирование завершено ===\n";

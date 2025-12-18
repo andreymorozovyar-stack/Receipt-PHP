@@ -1,0 +1,31 @@
+services:
+  receipt-php:
+    build: .
+    container_name: receipt-recognition-php
+    ports:
+      - "8081:80"
+    volumes:
+      # Монтируем tessdata если есть локальные языковые пакеты (опционально)
+      - ./tessdata:/var/www/html/tessdata:ro
+      # Монтируем config.php для кастомизации (опционально)
+      # Если config.php не существует, будет использован config.php.example
+      - ./config.php:/var/www/html/config.php:ro
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    restart: unless-stopped
+
+  # Опционально: сервис для запуска образа из Yandex Container Registry
+  # Раскомментируйте и укажите свой REGISTRY_ID
+  # receipt-php-yandex:
+  #   image: cr.yandex/<REGISTRY_ID>/receipt-php:latest
+  #   container_name: receipt-recognition-php-yandex
+  #   ports:
+  #     - "8082:80"
+  #   volumes:
+  #     # Монтируем tessdata если есть локальные языковые пакеты (опционально)
+  #     - ./tessdata:/var/www/html/tessdata:ro
+  #     # Монтируем config.php для кастомизации (опционально)
+  #     - ./config.php:/var/www/html/config.php:ro
+  #   environment:
+  #     - APACHE_DOCUMENT_ROOT=/var/www/html
+  #   restart: unless-stopped

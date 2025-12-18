@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Распознавание чеков</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            color: #333;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f2ff;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0;
+            font-weight: bold;
+        }
+
+        .result-content {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 0 0 10px 10px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            color: #333;
+            font-size: 1.1em;
+            font-weight: bold;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .result-link {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .result-link:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .services-list {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .services-list li {
+            padding: 10px 12px;
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+            word-wrap: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+            line-height: 1.6;
+        }
+        
+        .services-list li strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Распознавание чеков</h1>
+        <p class="subtitle">Загрузите изображение чека для автоматического распознавания</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Перетащите файл сюда или нажмите для выбора</div>
+            <div class="upload-hint">Поддерживаются форматы: PNG, JPG, JPEG</div>
+            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <button class="btn" id="submitBtn" disabled>Распознать чек</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Распознавание чека...</div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <div class="result-header">Результаты распознавания</div>
+            <div class="result-content" id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const resultContent = document.getElementById('resultContent');
+        const error = document.getElementById('error');
+
+        let selectedFile = null;
+
+        // Клик по области загрузки
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Выбор файла
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file) return;
+
+            console.log('Обработка файла:', file.name, 'Тип:', file.type, 'Размер:', file.size);
+
+            if (!file.type.match('image.*')) {
+                // Проверяем расширение файла, если тип не определен
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!['png', 'jpg', 'jpeg', 'gif', 'bmp'].includes(ext)) {
+                    showError('Пожалуйста, выберите изображение (PNG, JPG, JPEG)');
+                    return;
+                }
+            }
+
+            if (file.size === 0) {
+                showError('Файл пустой');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) { // 10MB
+                showError('Файл слишком большой (максимум 10MB)');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            submitBtn.disabled = false;
+            result.classList.remove('show');
+            error.classList.remove('show');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        submitBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            loading.classList.add('show');
+            submitBtn.disabled = true;
+            result.classList.remove('show');
+            error.classList.remove('show');
+
+            try {
+                console.log('Отправка файла:', selectedFile.name, 'Размер:', selectedFile.size, 'Тип:', selectedFile.type);
+                
+                if (!selectedFile || selectedFile.size === 0) {
+                    throw new Error('Файл не выбран или пустой');
+                }
+                
+                const response = await fetch('api/recognize', {
+                    method: 'POST',
+                    body: formData,
+                    // Не устанавливаем Content-Type, браузер сам установит с boundary
+                }).catch(err => {
+                    console.error('Ошибка сети:', err);
+                    throw new Error('Не удалось подключиться к серверу. Убедитесь, что сервер запущен на http://localhost:8080');
+                });
+
+                console.log('Ответ получен, статус:', response.status, 'Content-Type:', response.headers.get('content-type'));
+
+                // Читаем текст ответа один раз
+                const responseText = await response.text();
+                console.log('Текст ответа получен, длина:', responseText.length);
+                console.log('Первые 200 символов ответа:', responseText.substring(0, 200));
+
+                // Проверяем, что ответ не пустой
+                if (!responseText || responseText.trim().length === 0) {
+                    console.error('Получен пустой ответ от сервера');
+                    throw new Error('Сервер вернул пустой ответ. Проверьте логи сервера и убедитесь, что сервер запущен.');
+                }
+
+                let data;
+                try {
+                    // Парсим JSON из текста
+                    data = JSON.parse(responseText);
+                    console.log('Данные получены:', data);
+                } catch (jsonErr) {
+                    console.error('Ошибка парсинга JSON:', jsonErr);
+                    console.error('Текст ответа:', responseText.substring(0, 500));
+                    // Если ответ не JSON, показываем его как есть
+                    let errorMsg = 'Ошибка ответа сервера';
+                    if (responseText.length > 0) {
+                        errorMsg += ': ' + responseText.substring(0, 300);
+                    } else {
+                        errorMsg += ': получен пустой ответ. Проверьте, что сервер запущен и доступен.';
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                if (!response.ok || !data.success) {
+                    console.error('Ошибка API:', data);
+                    throw new Error(data.error || data.detail || `Ошибка при распознавании (код ${response.status})`);
+                }
+
+                if (data.success && data.data) {
+                    console.log('Успешное распознавание, данные:', data.data);
+                    displayResult(data.data);
+                } else {
+                    console.error('Неожиданный формат ответа:', data);
+                    throw new Error(data.error || 'Неожиданный формат ответа от сервера');
+                }
+            } catch (err) {
+                console.error('Ошибка при распознавании:', err);
+                console.error('Полная ошибка:', err);
+                
+                let errorMessage = err.message || 'Произошла ошибка при распознавании чека';
+                
+                // Если это ошибка сети, добавляем подсказку
+                if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                    errorMessage += '. Проверьте, что сервер запущен на http://localhost:8080';
+                }
+                
+                showError(errorMessage + '. Проверьте консоль браузера (F12) для деталей.');
+            } finally {
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+            }
+        });
+
+        function displayResult(data) {
+            let html = '';
+
+            // Номер чека
+            html += `<div class="result-item">
+                <div class="result-label">Номер чека</div>
+                <div class="result-value">${escapeHtml(data.receipt_number || 'не найден')}</div>
+            </div>`;
+
+            // Дата и время
+            let dateTime = '';
+            if (data.date && data.time) {
+                dateTime = `${escapeHtml(data.date)} ${escapeHtml(data.time)}`;
+            } else if (data.date) {
+                dateTime = escapeHtml(data.date);
+            } else if (data.time) {
+                dateTime = escapeHtml(data.time);
+            } else {
+                dateTime = 'не найдено';
+            }
+            html += `<div class="result-item">
+                <div class="result-label">Дата и время</div>
+                <div class="result-value">${dateTime}</div>
+            </div>`;
+
+            // Продавец
+            html += `<div class="result-item">
+                <div class="result-label">Продавец</div>
+                <div class="result-value">${escapeHtml(data.seller_name || 'не найден')}</div>
+            </div>`;
+
+            // ИНН продавца
+            html += `<div class="result-item">
+                <div class="result-label">ИНН продавца</div>
+                <div class="result-value">${escapeHtml(data.seller_inn || 'не найден')}</div>
+            </div>`;
+
+            // ИНН покупателя
+            html += `<div class="result-item">
+                <div class="result-label">ИНН покупателя</div>
+                <div class="result-value">${escapeHtml(data.buyer_inn || 'не найден')}</div>
+            </div>`;
+
+            // Режим налогообложения
+            html += `<div class="result-item">
+                <div class="result-label">Режим налогообложения</div>
+                <div class="result-value">${escapeHtml(data.tax_mode || 'не найден')}</div>
+            </div>`;
+
+            // Формирователь чека
+            html += `<div class="result-item">
+                <div class="result-label">Формирователь чека</div>
+                <div class="result-value">${escapeHtml(data.check_former || 'не найден')}</div>
+            </div>`;
+
+            // ИНН формирователя
+            html += `<div class="result-item">
+                <div class="result-label">ИНН формирователя</div>
+                <div class="result-value">${escapeHtml(data.check_former_inn || 'не найден')}</div>
+            </div>`;
+
+            // Услуги
+            if (data.services && data.services.length > 0) {
+                html += `<div class="result-item">
+                    <div class="result-label">Услуги (${data.services.length})</div>
+                    <ul class="services-list">`;
+                data.services.forEach((service, index) => {
+                    const serviceName = escapeHtml(service.name || 'Не указано');
+                    html += `<li><strong>${index + 1}.</strong> ${serviceName}</li>`;
+                });
+                html += `</ul></div>`;
+            } else {
+                html += `<div class="result-item">
+                    <div class="result-label">Услуги</div>
+                    <div class="result-value">не найдены</div>
+                </div>`;
+            }
+
+            // Итоговая сумма
+            html += `<div class="result-item">
+                <div class="result-label">Итоговая сумма</div>
+                <div class="result-value" style="color: #667eea; font-size: 1.2em;">${data.total_amount ? escapeHtml(data.total_amount) + ' руб.' : 'не найдена'}</div>
+            </div>`;
+
+            // Ссылка на ФНС
+            if (data.fns_url) {
+                html += `<div class="result-item">
+                    <div class="result-label">Ссылка на ФНС</div>
+                    <div class="result-value">
+                        <a href="${escapeHtml(data.fns_url)}" target="_blank" class="result-link">${escapeHtml(data.fns_url)}</a>
+                    </div>
+                </div>`;
+            } else {
+                html += `<div class="result-item">
+                    <div class="result-label">Ссылка на ФНС</div>
+                    <div class="result-value">не найдена (QR-код не распознан)</div>
+                </div>`;
+            }
+
+            // Распознанный текст (для отладки)
+            if (data.raw_text) {
+                html += `<div class="result-item">
+                    <div class="result-label">
+                        <details>
+                            <summary style="cursor: pointer; color: #667eea;">Распознанный текст (для отладки)</summary>
+                            <pre style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 0.85em; white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto;">${escapeHtml(data.raw_text)}</pre>
+                        </details>
+                    </div>
+                </div>`;
+            }
+
+            resultContent.innerHTML = html;
+            result.classList.add('show');
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('show');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

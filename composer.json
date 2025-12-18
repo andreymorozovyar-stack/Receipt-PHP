@@ -1,0 +1,24 @@
+{
+    "name": "etxt/receipt-recognition",
+    "description": "Система распознавания чеков на PHP с использованием Tesseract OCR",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "thiagoalessio/tesseract_ocr": "^2.12",
+        "khanamiryan/qrcode-detector-decoder": "^2.0",
+        "slim/slim": "^4.0",
+        "slim/psr7": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "ReceiptRecognition\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
+
+
+
+
