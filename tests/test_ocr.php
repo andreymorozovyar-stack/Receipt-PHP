@@ -10,9 +10,28 @@ use ReceiptRecognition\OcrService;
 
 echo "=== Тестирование OCR сервиса ===\n\n";
 
+// Загружаем конфиг (если есть) чтобы взять путь к tesseract/tessdata
+$config = [];
+$configPath = __DIR__ . '/../config.php';
+if (file_exists($configPath)) {
+    $config = require $configPath;
+}
+
+// Определяем команду для tesseract
+$tesseractCmd = $config['tesseract_path'] ?? 'tesseract';
+$tesseractDir = 'C:\Program Files\Tesseract-OCR';
+// Добавляем стандартный путь Tesseract в PATH, чтобы команды работали из PHP
+if (is_dir($tesseractDir)) {
+    $currentPath = getenv('PATH');
+    if (stripos($currentPath, $tesseractDir) === false) {
+        putenv('PATH=' . $tesseractDir . ';' . $currentPath);
+    }
+}
+$tessdataDir = $config['tessdata_dir'] ?? null;
+
 // Проверка наличия Tesseract
 echo "Проверка наличия Tesseract OCR...\n";
-$tesseractCheck = shell_exec('tesseract --version 2>&1');
+$tesseractCheck = shell_exec('"' . $tesseractCmd . '" --version 2>&1');
 if (strpos($tesseractCheck, 'tesseract') !== false) {
     echo "✓ Tesseract найден:\n$tesseractCheck\n\n";
 } else {
@@ -25,7 +44,11 @@ if (strpos($tesseractCheck, 'tesseract') !== false) {
 
 // Проверка языковых пакетов
 echo "Проверка языковых пакетов...\n";
-$langsCheck = shell_exec('tesseract --list-langs 2>&1');
+$listLangsCmd = '"' . $tesseractCmd . '" --list-langs';
+if ($tessdataDir) {
+    $listLangsCmd .= ' --tessdata-dir "' . $tessdataDir . '"';
+}
+$langsCheck = shell_exec($listLangsCmd . ' 2>&1');
 if (strpos($langsCheck, 'rus') !== false && strpos($langsCheck, 'eng') !== false) {
     echo "✓ Языковые пакеты (rus, eng) установлены\n\n";
 } else {
@@ -36,7 +59,7 @@ if (strpos($langsCheck, 'rus') !== false && strpos($langsCheck, 'eng') !== false
 // Тест инициализации сервиса
 echo "Тест 1: Инициализация OCR сервиса\n";
 try {
-    $ocrService = new OcrService();
+    $ocrService = new OcrService($config['tesseract_path'] ?? null, null, $tessdataDir);
     echo "✓ OCR сервис инициализирован успешно\n\n";
 } catch (Exception $e) {
     echo "✗ Ошибка инициализации: " . $e->getMessage() . "\n\n";
@@ -49,7 +72,7 @@ if (file_exists($testImagePath)) {
     echo "Тест 2: Распознавание тестового изображения\n";
     echo "Путь к изображению: $testImagePath\n";
     try {
-        $text = $ocrService->recognize($testImagePath);
+        $text = $ocrService->recognize($testImagePath, $config['ocr_languages'] ?? ['rus', 'eng']);
         echo "✓ Распознавание выполнено успешно\n";
         echo "Распознанный текст (первые 200 символов):\n" . substr($text, 0, 200) . "...\n\n";
     } catch (Exception $e) {
@@ -66,7 +89,7 @@ echo "Тест 3: Распознавание из бинарных данных\
 if (file_exists($testImagePath)) {
     try {
         $imageData = file_get_contents($testImagePath);
-        $text = $ocrService->recognizeFromData($imageData, 'png');
+        $text = $ocrService->recognizeFromData($imageData, 'png', $config['ocr_languages'] ?? ['rus', 'eng']);
         echo "✓ Распознавание из бинарных данных выполнено успешно\n";
         echo "Распознанный текст (первые 200 символов):\n" . substr($text, 0, 200) . "...\n\n";
     } catch (Exception $e) {
@@ -77,6 +100,7 @@ if (file_exists($testImagePath)) {
 }
 
 echo "=== Тестирование OCR завершено ===\n";
+
 
 
 

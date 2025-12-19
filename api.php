@@ -220,7 +220,8 @@ $app->post('/recognize', function (Request $request, Response $response): Respon
             'data' => $receiptData
         ];
         
-        $response->getBody()->write(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        // Защита от невалидной UTF-8 в raw_text
+        $response->getBody()->write(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_SUBSTITUTE));
         return $response->withHeader('Content-Type', 'application/json; charset=UTF-8');
         
     } catch (Throwable $e) {
@@ -242,7 +243,7 @@ $app->post('/recognize', function (Request $request, Response $response): Respon
             'error_type' => get_class($e)
         ];
         
-        $response->getBody()->write(json_encode($errorResponse, JSON_UNESCAPED_UNICODE));
+        $response->getBody()->write(json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
         return $response
             ->withHeader('Content-Type', 'application/json; charset=UTF-8')
             ->withStatus(400);
@@ -292,6 +293,7 @@ $errorMiddleware->setDefaultErrorHandler(function (
 
 // Запускаем приложение
 $app->run();
+
 
 
 

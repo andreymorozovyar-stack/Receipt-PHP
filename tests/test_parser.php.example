@@ -83,3 +83,4 @@ echo "Результат:\n";
 echo json_encode($result3, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n";
 
 echo "=== Тестирование завершено ===\n";
+

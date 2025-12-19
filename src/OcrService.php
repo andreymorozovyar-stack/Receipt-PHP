@@ -107,39 +107,31 @@ class OcrService
         $langString = implode('+', $languages);
         $tempOutput = $this->tempDir . DIRECTORY_SEPARATOR . uniqid('tesseract_') . '.txt';
         
-        // В Docker всегда используем системный tesseract из PATH
+        $isWindows = stripos(PHP_OS_FAMILY, 'Windows') !== false;
         $isDocker = file_exists('/.dockerenv');
-        $hasWindowsPath = $this->tesseractPath && (
-            strpos($this->tesseractPath, 'C:\\') === 0 || 
-            strpos($this->tesseractPath, 'D:\\') === 0 ||
-            strpos($this->tesseractPath, '.exe') !== false
-        );
-        
-        if ($isDocker || $hasWindowsPath || !$this->tesseractPath) {
-            // Используем системный tesseract из PATH
-            $tesseractCmd = 'tesseract';
+
+        // Определяем исполняемый файл
+        if (!empty($this->tesseractPath)) {
+            $tesseractCmd = $this->tesseractPath;
         } else {
-            // Используем указанный путь (для локальной разработки на Windows/Linux)
-            $tesseractCmd = '"' . $this->tesseractPath . '"';
+            $tesseractCmd = $isWindows ? 'tesseract.exe' : 'tesseract';
         }
-        
-        $command = $tesseractCmd . ' ' . 
-                  escapeshellarg($imagePath) . ' ' . 
-                  escapeshellarg($tempOutput) . ' -l ' . 
-                  escapeshellarg($langString);
-        
-        // Добавляем путь к локальной директории tessdata, если указан и это не Windows путь
-        $isDocker = file_exists('/.dockerenv');
-        $hasWindowsTessdataPath = $this->tessdataDir && (
-            strpos($this->tessdataDir, 'C:\\') === 0 || 
-            strpos($this->tessdataDir, 'D:\\') === 0
-        );
-        
-        if ($this->tessdataDir && is_dir($this->tessdataDir) && (!$isDocker || !$hasWindowsTessdataPath)) {
-            $command .= ' --tessdata-dir ' . escapeshellarg($this->tessdataDir);
+
+        // Упрощенный кавычатель: на Windows используем двойные кавычки, на *nix — escapeshellarg
+        $q = function ($v) use ($isWindows) {
+            return $isWindows ? '"' . $v . '"' : escapeshellarg($v);
+        };
+
+        $command = $q($tesseractCmd) . ' ' .
+                   $q($imagePath) . ' ' .
+                   $q($tempOutput) . ' -l ' .
+                   $q($langString);
+
+        // Добавляем tessdata, если указано
+        if ($this->tessdataDir && is_dir($this->tessdataDir)) {
+            $command .= ' --tessdata-dir ' . $q($this->tessdataDir);
         }
-        // В Docker без локального tessdata используем системные пакеты (по умолчанию)
-        
+
         $command .= ' 2>&1';
         
         $output = [];
@@ -179,6 +171,7 @@ class OcrService
         }
     }
 }
+
 
 
 
